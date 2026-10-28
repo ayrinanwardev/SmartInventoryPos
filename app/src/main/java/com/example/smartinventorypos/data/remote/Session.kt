@@ -11,4 +11,6 @@ object Session {
     var role: String?
         get() = prefs.getString("role", null)
         set(v) { prefs.edit().putString("role", v).apply() }
+
+    fun clear() { prefs.edit().clear().apply() }
 }

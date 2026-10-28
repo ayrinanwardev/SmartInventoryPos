@@ -33,4 +33,6 @@ interface PosDao {
 
     @Transaction @Query("SELECT * FROM sales ORDER BY createdAt DESC")
     fun history(): Flow<List<SaleWithItems>>
+
+    @Query("DELETE FROM products WHERE id = :id") suspend fun deleteProduct(id: Long)
 }

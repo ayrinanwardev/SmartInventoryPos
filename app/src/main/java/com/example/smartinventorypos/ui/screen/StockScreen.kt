@@ -2,174 +2,176 @@ package com.example.smartinventorypos.ui.screen
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.ListItem
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Inventory2
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.smartinventorypos.data.remote.ProductDto
-import com.example.smartinventorypos.ui.PosViewModel
-import kotlinx.coroutines.launch
-
+import com.example.smartinventorypos.R
+import com.example.smartinventorypos.domain.model.Product
+import com.example.smartinventorypos.domain.model.Role
+import com.example.smartinventorypos.ui.common.UiText
+import com.example.smartinventorypos.ui.common.resolve
+import com.example.smartinventorypos.ui.common.sessionViewModel
+import com.example.smartinventorypos.ui.components.CircleIconButton
+import com.example.smartinventorypos.ui.components.EmptyState
+import com.example.smartinventorypos.ui.components.ErrorBanner
+import com.example.smartinventorypos.ui.components.InfoBanner
+import com.example.smartinventorypos.ui.components.LoadingBar
+import com.example.smartinventorypos.ui.components.Monogram
+import com.example.smartinventorypos.ui.components.PagePadding
+import com.example.smartinventorypos.ui.components.PillChip
+import com.example.smartinventorypos.ui.components.PosDialog
+import com.example.smartinventorypos.ui.components.PosTextField
+import com.example.smartinventorypos.ui.components.ScreenHeader
+import com.example.smartinventorypos.ui.components.SmallPillButton
+import com.example.smartinventorypos.ui.components.SoftCard
+import com.example.smartinventorypos.ui.components.StockBadge
+import com.example.smartinventorypos.ui.theme.Muted
+import com.example.smartinventorypos.ui.viewmodel.StockViewModel
 
 /**
- * Stock screen for MANAGER and CASHIER.
- * - All / Low stock filter
- * - Adjust (+ / -) with a reason
- * - Cashier limit (max 20 per change) is enforced by the backend
+ * Stock screen for MANAGER and CASHIER: an All / Low stock filter and adjustments with a reason.
+ * The cashier limit (max 20 per change) is enforced by the backend.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun StockScreen(vm: PosViewModel, role: String?, onBack: () -> Unit) {
-    val list by vm.adminProducts.collectAsStateWithLifecycle()
-    val loading by vm.loading.collectAsStateWithLifecycle()
-    val error by vm.screenError.collectAsStateWithLifecycle()
+fun StockScreen(modifier: Modifier = Modifier, vm: StockViewModel = sessionViewModel()) {
+    val state by vm.state.collectAsStateWithLifecycle()
+    val shown = state.visibleProducts
+    val onlyLow = state.onlyLowStock
 
-    var onlyLow by remember { mutableStateOf(false) }
-    var adjusting by remember { mutableStateOf<ProductDto?>(null) }
-    var actionError by remember { mutableStateOf<String?>(null) }
-    var info by remember { mutableStateOf<String?>(null) }
-    val scope = rememberCoroutineScope()
+    LaunchedEffect(Unit) { vm.load() }
 
-    val shown = if (onlyLow) list.filter { it.stock <= it.lowStockThreshold } else list
-
-    LaunchedEffect(Unit) { vm.loadAdminProducts() }
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Stock") },
-                navigationIcon = { TextButton(onClick = onBack) { Text("Back") } },
-                actions = { TextButton(onClick = vm::loadAdminProducts) { Text("Refresh") } }
+    Column(modifier.fillMaxSize()) {
+        ScreenHeader(
+            stringResource(R.string.stock_title),
+            subtitle = stringResource(
+                if (vm.role == Role.CASHIER) R.string.stock_subtitle_cashier else R.string.stock_subtitle_manager
             )
+        ) {
+            CircleIconButton(Icons.Outlined.Refresh, stringResource(R.string.refresh), vm::load)
         }
-    ) { pad ->
-        Column(Modifier.padding(pad).padding(12.dp)) {
-            if (role == "CASHIER") {
-                Text(
-                    "Cashier ekbar e max 20 ta change korte pare",
-                    style = MaterialTheme.typography.labelSmall
-                )
-            }
-
+        Column(
+            Modifier.padding(start = PagePadding, end = PagePadding, bottom = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(selected = !onlyLow, onClick = { onlyLow = false }, label = { Text("All") })
-                FilterChip(selected = onlyLow, onClick = { onlyLow = true }, label = { Text("Low stock") })
+                PillChip(stringResource(R.string.filter_all), !onlyLow, { vm.showOnlyLowStock(false) })
+                PillChip(stringResource(R.string.low_stock), onlyLow, { vm.showOnlyLowStock(true) })
             }
-
-            if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-            error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            info?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
-            if (onlyLow && !loading && error == null && shown.isEmpty()) {
-                Text("Shob product er stock thik ache")
-            }
-
-            LazyColumn {
-                items(shown, key = { it.id }) { p ->
-                    val low = p.stock <= p.lowStockThreshold
-                    ListItem(
-                        headlineContent = { Text(p.name) },
-                        supportingContent = {
-                            Text(
-                                "Stock ${p.stock}  (limit ${p.lowStockThreshold})" +
-                                        if (p.stock == 0) "  •  OUT" else if (low) "  •  LOW" else ""
-                            )
-                        },
-                        trailingContent = {
-                            TextButton(onClick = {
-                                actionError = null
-                                info = null
-                                adjusting = p
-                            }) { Text("Adjust") }
-                        }
+            if (state.loading) LoadingBar()
+            state.error?.let { ErrorBanner(it.resolve()) }
+            state.info?.let { InfoBanner(it.resolve()) }
+        }
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(minSize = 320.dp),
+            contentPadding = PaddingValues(start = PagePadding, end = PagePadding, top = 4.dp, bottom = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            if (shown.isEmpty() && !state.loading && state.error == null) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    EmptyState(
+                        Icons.Outlined.Inventory2,
+                        stringResource(if (onlyLow) R.string.stock_good_title else R.string.no_products_yet),
+                        stringResource(if (onlyLow) R.string.stock_good_message else R.string.stock_empty_message)
                     )
-                    HorizontalDivider()
                 }
+            }
+            items(shown, key = { it.id }) { p ->
+                StockRow(p) { vm.startAdjusting(p) }
             }
         }
     }
 
-    adjusting?.let { p ->
+    state.adjusting?.let { p ->
         AdjustDialog(
             p = p,
-            error = actionError,
-            onDismiss = { adjusting = null },
-            onSave = { delta, reason ->
-                scope.launch {
-                    val err = vm.adjustStock(p.id, delta, reason)
-                    if (err == null) {
-                        info = "${p.name}: stock update hoyeche"
-                        actionError = null
-                        adjusting = null
-                    } else {
-                        actionError = err
-                    }
-                }
-            }
+            error = state.adjustError,
+            saving = state.saving,
+            onDismiss = vm::cancelAdjusting,
+            onSave = vm::saveAdjustment
         )
     }
 }
 
 @Composable
-private fun AdjustDialog(
-    p: ProductDto,
-    error: String?,
-    onDismiss: () -> Unit,
-    onSave: (delta: String, reason: String) -> Unit
-) {
-    var add by remember { mutableStateOf(true) }
-    var qty by remember { mutableStateOf("") }
-    var reason by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(p.name) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Ekhon stock: ${p.stock}")
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(selected = add, onClick = { add = true }, label = { Text("Add (+)") })
-                    FilterChip(selected = !add, onClick = { add = false }, label = { Text("Remove (−)") })
-                }
-                OutlinedTextField(
-                    qty, { qty = it.filter { c -> c.isDigit() } },
-                    label = { Text("Quantity") }, singleLine = true
+private fun StockRow(p: Product, onAdjust: () -> Unit) {
+    SoftCard {
+        Row(
+            Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Monogram(p.name, Modifier.size(52.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(p.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    stringResource(R.string.stock_row, p.stock, p.lowStockThreshold),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Muted
                 )
-                OutlinedTextField(
-                    reason, { reason = it },
-                    label = { Text("Karon (restock / damaged / count)") }
-                )
-                error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                StockBadge(p.stock, p.lowStockThreshold, Modifier.padding(top = 4.dp))
             }
-        },
-        confirmButton = {
-            TextButton(onClick = {
-                val q = qty.toIntOrNull() ?: 0
-                onSave((if (add) q else -q).toString(), reason)
-            }) { Text("Save") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
-    )
+            SmallPillButton(stringResource(R.string.adjust), onAdjust)
+        }
+    }
+}
+
+@Composable
+private fun AdjustDialog(
+    p: Product,
+    error: UiText?,
+    saving: Boolean,
+    onDismiss: () -> Unit,
+    onSave: (quantity: String, isAddition: Boolean, reason: String) -> Unit
+) {
+    var add by rememberSaveable(p.id) { mutableStateOf(true) }
+    var qty by rememberSaveable(p.id) { mutableStateOf("") }
+    var reason by rememberSaveable(p.id) { mutableStateOf("") }
+
+    PosDialog(
+        title = p.name,
+        confirmText = stringResource(R.string.save),
+        busy = saving,
+        onDismiss = onDismiss,
+        onConfirm = { onSave(qty, add, reason) }
+    ) {
+        Text(stringResource(R.string.current_stock, p.stock), style = MaterialTheme.typography.bodyMedium, color = Muted)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            PillChip(stringResource(R.string.add), add, { add = true })
+            PillChip(stringResource(R.string.remove), !add, { add = false })
+        }
+        PosTextField(
+            qty,
+            { qty = it.filter { c -> c.isDigit() } },
+            stringResource(R.string.quantity),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+        )
+        PosTextField(reason, { reason = it }, stringResource(R.string.adjust_reason))
+        error?.let { ErrorBanner(it.resolve()) }
+    }
 }

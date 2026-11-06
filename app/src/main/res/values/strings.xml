@@ -1,3 +1,147 @@
 <resources>
-    <string name="app_name">SmartInventoryPOS</string>
+    <string name="app_name">Smart Inventory POS</string>
+
+    <!-- Common -->
+    <string name="back">Back</string>
+    <string name="cancel">Cancel</string>
+    <string name="save">Save</string>
+    <string name="refresh">Refresh</string>
+    <string name="sign_out">Sign out</string>
+    <string name="out_of_stock">Out of stock</string>
+    <string name="low_stock">Low stock</string>
+    <string name="in_stock_count">%1$d in stock</string>
+    <string name="no_products_yet">No products yet</string>
+    <string name="date_separator">"  •  "</string>
+
+    <!-- Navigation -->
+    <string name="nav_sell">Sell</string>
+    <string name="nav_shop">Shop</string>
+    <string name="nav_stock">Stock</string>
+    <string name="nav_manage">Manage</string>
+    <string name="nav_orders">Orders</string>
+
+    <!-- Roles -->
+    <string name="role_manager">Manager</string>
+    <string name="role_cashier">Cashier</string>
+    <string name="role_customer">Customer</string>
+    <string name="role_unknown">-</string>
+
+    <!-- Errors -->
+    <string name="error_session_expired">Your session has expired. Please sign in again</string>
+    <string name="error_forbidden">You do not have permission to do this</string>
+    <string name="error_conflict">This conflicts with existing data, such as a duplicate barcode</string>
+    <string name="error_with_code">Something went wrong (error %1$d)</string>
+    <string name="error_network">Cannot reach the server. Check your connection</string>
+    <string name="error_unknown">Something went wrong. Please try again</string>
+    <string name="error_invalid_discount">Invalid discount</string>
+    <string name="error_empty_cart">Your cart is empty</string>
+    <string name="error_bad_login">Incorrect username or password</string>
+    <string name="error_username_taken">This username is already taken</string>
+    <string name="error_bad_registration">Username needs at least 3 characters and password at least 6</string>
+    <string name="error_product_form">Enter a valid name, price and stock</string>
+    <string name="error_product_form_with_limit">Enter a valid name, price, stock and limit</string>
+    <string name="error_adjust_form">Enter a quantity and a reason</string>
+    <string name="error_cashier_limit">Cashiers can change at most 20 items at once</string>
+    <string name="error_negative_stock">Stock cannot go below 0</string>
+
+    <!-- Login -->
+    <string name="login_title">Welcome back</string>
+    <string name="login_subtitle">Sign in to Smart Inventory POS</string>
+    <string name="login_button">Sign in</string>
+    <string name="login_switch">New customer? Create an account</string>
+    <string name="register_title">Create your account</string>
+    <string name="register_subtitle">Sign up to shop and track your orders</string>
+    <string name="register_button">Create account</string>
+    <string name="register_switch">Already have an account? Sign in</string>
+    <string name="register_password_hint">Use at least 6 characters</string>
+    <string name="username">Username</string>
+    <string name="password">Password</string>
+
+    <!-- Sell -->
+    <string name="pos_title">Point of sale</string>
+    <string name="shop_title">Shop</string>
+    <string name="pos_subtitle_synced">"%1$s  •  All synced"</string>
+    <string name="pos_subtitle_pending">"%1$s  •  %2$d waiting to sync"</string>
+    <string name="search_products">Search name or barcode</string>
+    <string name="no_matching_products">No matching products</string>
+    <string name="try_another_search">Try another name or barcode</string>
+    <string name="tap_refresh">Tap refresh to load the latest products</string>
+    <string name="sign_out_title">Sign out?</string>
+    <string name="sign_out_message">Your current cart will be cleared.</string>
+    <string name="add_named">Add %1$s</string>
+    <string name="add_one_named">Add one %1$s</string>
+    <string name="remove_one_named">Remove one %1$s</string>
+    <string name="open_cart">Open cart</string>
+    <string name="cart">Cart</string>
+    <string name="discount">Discount</string>
+    <string name="subtotal">Subtotal</string>
+    <string name="total">Total</string>
+    <string name="checkout">Checkout</string>
+    <string name="buy_now">Buy now</string>
+    <string name="sale_saved">Sale saved</string>
+    <plurals name="cart_items">
+        <item quantity="one">%1$d item</item>
+        <item quantity="other">%1$d items</item>
+    </plurals>
+    <plurals name="sales_rejected">
+        <item quantity="one">%1$d sale rejected by server (stock or product changed)</item>
+        <item quantity="other">%1$d sales rejected by server (stock or product changed)</item>
+    </plurals>
+
+    <!-- Stock -->
+    <string name="stock_title">Stock</string>
+    <string name="stock_subtitle_cashier">You can change up to 20 items at once</string>
+    <string name="stock_subtitle_manager">Track and adjust inventory</string>
+    <string name="filter_all">All</string>
+    <string name="stock_good_title">Stock levels look good</string>
+    <string name="stock_good_message">No products are running low</string>
+    <string name="stock_empty_message">Products will appear here once added</string>
+    <string name="stock_row">"%1$d in stock  •  Limit %2$d"</string>
+    <string name="adjust">Adjust</string>
+    <string name="current_stock">Current stock: %1$d</string>
+    <string name="add">Add</string>
+    <string name="remove">Remove</string>
+    <string name="quantity">Quantity</string>
+    <string name="adjust_reason">Reason (restock, damaged, count)</string>
+    <string name="stock_updated">%1$s: stock updated</string>
+
+    <!-- Manage -->
+    <string name="manage_title">Manage</string>
+    <string name="manage_subtitle">Products and sales reports</string>
+    <string name="add_product">Add product</string>
+    <string name="tab_products">Products</string>
+    <string name="tab_sales">Sales</string>
+    <string name="products_empty_message">Use the + button to add your first product</string>
+    <string name="product_row">"%1$d in stock  •  %2$s"</string>
+    <string name="no_barcode">No barcode</string>
+    <string name="edit_named">Edit %1$s</string>
+    <string name="delete_named">Delete %1$s</string>
+    <string name="delete_product_title">Delete product?</string>
+    <string name="delete">Delete</string>
+    <string name="delete_product_message">%1$s will no longer be available for sale.</string>
+    <string name="edit_product">Edit product</string>
+    <string name="name">Name</string>
+    <string name="barcode">Barcode</string>
+    <string name="barcode_optional">Barcode (optional)</string>
+    <string name="price">Price</string>
+    <string name="stock">Stock</string>
+    <string name="low_stock_limit">Low-stock limit</string>
+    <string name="add_product_subtitle">An existing product is restocked at the new price</string>
+    <string name="save_product">Save product</string>
+    <string name="product_saved">Saved: %1$s</string>
+
+    <!-- Sales and orders -->
+    <string name="today_sales">Today\'s sales</string>
+    <string name="no_value">-</string>
+    <string name="no_sales_title">No sales yet</string>
+    <string name="no_sales_message">Completed sales will appear here</string>
+    <string name="sale_title">Sale #%1$d</string>
+    <string name="order_title">Order #%1$d</string>
+    <string name="unknown_product">Unknown product</string>
+    <string name="sale_line">%1$d × %2$s</string>
+    <string name="discount_amount">Discount %1$s</string>
+    <string name="orders_title">My orders</string>
+    <string name="orders_subtitle">Your purchase history</string>
+    <string name="no_orders_title">No orders yet</string>
+    <string name="no_orders_message">Your purchases will appear here</string>
 </resources>

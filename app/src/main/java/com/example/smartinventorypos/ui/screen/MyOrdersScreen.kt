@@ -1,67 +1,58 @@
 package com.example.smartinventorypos.ui.screen
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.smartinventorypos.ui.PosViewModel
-
+import com.example.smartinventorypos.R
+import com.example.smartinventorypos.ui.common.resolve
+import com.example.smartinventorypos.ui.common.sessionViewModel
+import com.example.smartinventorypos.ui.components.CircleIconButton
+import com.example.smartinventorypos.ui.components.EmptyState
+import com.example.smartinventorypos.ui.components.ErrorBanner
+import com.example.smartinventorypos.ui.components.LoadingBar
+import com.example.smartinventorypos.ui.components.PagePadding
+import com.example.smartinventorypos.ui.components.ScreenHeader
+import com.example.smartinventorypos.ui.viewmodel.MyOrdersViewModel
 
 /** Customer order history. */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MyOrdersScreen(vm: PosViewModel, onBack: () -> Unit) {
-    val orders by vm.myOrders.collectAsStateWithLifecycle()
-    val loading by vm.loading.collectAsStateWithLifecycle()
-    val error by vm.screenError.collectAsStateWithLifecycle()
-    LaunchedEffect(Unit) { vm.loadMyOrders() }
+fun MyOrdersScreen(modifier: Modifier = Modifier, vm: MyOrdersViewModel = sessionViewModel()) {
+    val state by vm.state.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) { vm.load() }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("My orders") },
-                navigationIcon = { TextButton(onClick = onBack) { Text("Back") } },
-                actions = { TextButton(onClick = vm::loadMyOrders) { Text("Refresh") } }
-            )
+    Column(modifier.fillMaxSize()) {
+        ScreenHeader(stringResource(R.string.orders_title), subtitle = stringResource(R.string.orders_subtitle)) {
+            CircleIconButton(Icons.Outlined.Refresh, stringResource(R.string.refresh), vm::load)
         }
-    ) { pad ->
-        Column(Modifier.padding(pad).padding(12.dp)) {
-            if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-            error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            if (!loading && error == null && orders.isEmpty()) Text("Ekhono kono order nei")
-            LazyColumn {
-                items(orders, key = { it.id }) { s ->
-                    Column(Modifier.padding(vertical = 8.dp)) {
-                        Text("Order #${s.id}   ৳%.2f".format(s.total), style = MaterialTheme.typography.titleSmall)
-                        Text(
-                            "${s.createdAt.take(16).replace('T', ' ')} (UTC)",
-                            style = MaterialTheme.typography.labelSmall
-                        )
-                        s.items.forEach { line ->
-                            Text(
-                                "• ${line.product?.name ?: "?"} × ${line.qty}  @ %.2f".format(line.unitPrice),
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
-                    }
-                    HorizontalDivider()
+        LazyColumn(
+            contentPadding = PaddingValues(start = PagePadding, end = PagePadding, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            if (state.loading) item { LoadingBar() }
+            state.error?.let { error -> item { ErrorBanner(error.resolve()) } }
+            if (state.orders.isEmpty() && !state.loading && state.error == null) {
+                item {
+                    EmptyState(
+                        Icons.AutoMirrored.Outlined.ReceiptLong,
+                        stringResource(R.string.no_orders_title),
+                        stringResource(R.string.no_orders_message)
+                    )
                 }
             }
+            items(state.orders, key = { it.id }) { SaleCard(stringResource(R.string.order_title, it.id), it) }
         }
     }
 }

@@ -1,0 +1,4 @@
+/build
+/data
+# Local database login: never commit this file
+/application.properties

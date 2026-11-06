@@ -1,78 +1,90 @@
 package com.example.smartinventorypos.ui.screen
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.example.smartinventorypos.ui.PosViewModel
-import kotlinx.coroutines.launch
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.smartinventorypos.R
+import com.example.smartinventorypos.ui.common.resolve
+import com.example.smartinventorypos.ui.common.sessionViewModel
+import com.example.smartinventorypos.ui.components.ErrorBanner
+import com.example.smartinventorypos.ui.components.InfoBanner
+import com.example.smartinventorypos.ui.components.PagePadding
+import com.example.smartinventorypos.ui.components.PosTextField
+import com.example.smartinventorypos.ui.components.PrimaryButton
+import com.example.smartinventorypos.ui.components.ScreenHeader
+import com.example.smartinventorypos.ui.viewmodel.AddProductViewModel
 
 @Composable
-fun AddProductScreen(vm: PosViewModel, onDone: () -> Unit) {
-    var name by remember { mutableStateOf("") }
-    var barcode by remember { mutableStateOf("") }
-    var price by remember { mutableStateOf("") }
-    var stock by remember { mutableStateOf("") }
-    var message by remember { mutableStateOf<String?>(null) }
-    val scope = rememberCoroutineScope()
+fun AddProductScreen(
+    modifier: Modifier = Modifier,
+    onDone: () -> Unit,
+    vm: AddProductViewModel = sessionViewModel()
+) {
+    val state by vm.state.collectAsStateWithLifecycle()
+    val form = state.form
+    val next = KeyboardOptions(imeAction = ImeAction.Next)
 
-    Column(
-        Modifier.fillMaxSize().padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Text("Add product", style = MaterialTheme.typography.headlineMedium)
-        OutlinedTextField(
-            name,
-            { name = it },
-            label = { Text("Name") },
-            modifier = Modifier.fillMaxWidth()
+    Column(modifier.fillMaxSize().imePadding()) {
+        ScreenHeader(
+            stringResource(R.string.add_product),
+            subtitle = stringResource(R.string.add_product_subtitle),
+            onBack = onDone
         )
-        OutlinedTextField(
-            barcode,
-            { barcode = it },
-            label = { Text("Barcode (optional)") },
-            modifier = Modifier.fillMaxWidth()
-        )
-        OutlinedTextField(
-            price,
-            { price = it },
-            label = { Text("Price") },
-            modifier = Modifier.fillMaxWidth()
-        )
-        OutlinedTextField(
-            stock,
-            { stock = it },
-            label = { Text("Stock") },
-            modifier = Modifier.fillMaxWidth()
-        )
-        message?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = {
-                scope.launch {
-                    val err = vm.addProduct(name, barcode, price, stock)
-                    if (err == null) {
-                        message = "Saved: $name"
-                        name = ""; barcode = ""; price = ""; stock = ""
-                    } else message = err
-                }
-            }) { Text("Save") }
-            OutlinedButton(onClick = onDone) { Text("Back") }
+        Box(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()), contentAlignment = Alignment.TopCenter) {
+            Column(
+                Modifier.widthIn(max = 560.dp).fillMaxWidth().padding(horizontal = PagePadding, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                PosTextField(
+                    form.name,
+                    { vm.onFormChange(form.copy(name = it)) },
+                    stringResource(R.string.name),
+                    keyboardOptions = next
+                )
+                PosTextField(
+                    form.barcode,
+                    { vm.onFormChange(form.copy(barcode = it)) },
+                    stringResource(R.string.barcode_optional),
+                    keyboardOptions = next
+                )
+                PosTextField(
+                    form.price,
+                    { vm.onFormChange(form.copy(price = it)) },
+                    stringResource(R.string.price),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next)
+                )
+                PosTextField(
+                    form.stock,
+                    { vm.onFormChange(form.copy(stock = it)) },
+                    stringResource(R.string.stock),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done)
+                )
+                state.error?.let { ErrorBanner(it.resolve()) }
+                state.saved?.let { InfoBanner(it.resolve()) }
+                PrimaryButton(
+                    text = stringResource(R.string.save_product),
+                    busy = state.busy,
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 16.dp),
+                    onClick = vm::save
+                )
+            }
         }
     }
-
 }

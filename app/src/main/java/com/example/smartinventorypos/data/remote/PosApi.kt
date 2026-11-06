@@ -1,5 +1,4 @@
 package com.example.smartinventorypos.data.remote
-import com.example.smartinventorypos.data.local.model.ProductReq
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET

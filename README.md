@@ -10,18 +10,36 @@ Sales keep working when the internet doesn't, and sync without ever being counte
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Supabase-4169E1?logo=postgresql&logoColor=white)
 ![Tests](https://img.shields.io/badge/tests-68%20passing-success)
 
-<p align="center">
-  <img src="docs/media/demo.gif" width="300" alt="Demo: a manager sells 3 items with a discount, stock drops from 20 to 17, then a cashier is blocked from removing 25 units">
-</p>
+## Demo: one app, three roles
+
+<table>
+  <tr>
+    <th width="33%">👔 Manager</th>
+    <th width="33%">🧾 Cashier</th>
+    <th width="33%">🛒 Customer</th>
+  </tr>
+  <tr>
+    <td><img src="docs/media/manager.gif" width="100%" alt="Manager adds Basmati Rice, sells 3 with a ৳10 discount for ৳230, checks low stock and today's revenue"></td>
+    <td><img src="docs/media/cashier.gif" width="100%" alt="Cashier signs in and tries to remove 25 units of stock; the server blocks it with 'Cashiers can change at most 20 items at once'"></td>
+    <td><img src="docs/media/customer.gif" width="100%" alt="New customer signs up and buys 2 sugar at full price; the cart has no discount field"></td>
+  </tr>
+  <tr>
+    <td valign="top">Adds a product, sells 3 × ৳80 with ৳10 off (<b>৳230</b>), stock drops 20 → 17, checks low stock and today's revenue.</td>
+    <td valign="top">Tries to remove 25 units. The <b>server</b> refuses: cashiers may change at most 20 at once.</td>
+    <td valign="top">Signs up and buys at full price. No discount field, and the server would ignore one anyway.</td>
+  </tr>
+</table>
+
 <p align="center">
   <i>Recorded on a real phone (Xiaomi, Android 13) against the real backend and Supabase database.</i><br>
-  <a href="docs/media/demo.mp4"><b>▶ Watch the full 2.5-minute demo</b></a>: manager, cashier and customer flows.
+  <a href="docs/media/demo.mp4"><b>▶ Watch the full 2.5-minute demo (MP4)</b></a>
 </p>
 
 ---
 
 ## Contents
 
+- [Demo](#demo-one-app-three-roles)
 - [What it does](#what-it-does)
 - [Architecture](#architecture)
 - [Data model](#data-model)

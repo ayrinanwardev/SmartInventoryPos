@@ -28,6 +28,7 @@ import dagger.hilt.components.SingletonComponent
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
 @Module
@@ -59,7 +60,13 @@ object NetworkModule {
     @Provides
     @Singleton
     fun providePosApi(authInterceptor: AuthInterceptor): PosApi {
-        val client = OkHttpClient.Builder().addInterceptor(authInterceptor).build()
+        // The backend's database can be far away (hosted), so allow more than OkHttp's 10 s default.
+        val client = OkHttpClient.Builder()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .addInterceptor(authInterceptor)
+            .build()
         return Retrofit.Builder()
             .baseUrl(baseUrl)
             .client(client)

@@ -2,3 +2,5 @@
 /data
 # Local database login: never commit this file
 /application.properties
+# Database password and JWT secret: never commit this file
+.env

@@ -20,12 +20,12 @@ Sales keep working when the internet doesn't, and sync without ever being counte
   </tr>
   <tr>
     <td><img src="docs/media/manager.gif" width="100%" alt="Manager adds Basmati Rice, sells 3 with a ৳10 discount for ৳230, checks low stock and today's revenue"></td>
-    <td><img src="docs/media/cashier.gif" width="100%" alt="Cashier signs in and tries to remove 25 units of stock; the server blocks it with 'Cashiers can change at most 20 items at once'"></td>
+    <td><img src="docs/media/cashier.gif" width="100%" alt="Cashier sells 2 lentils with a ৳20 discount, removes 2 damaged units successfully, then is blocked from removing 25"></td>
     <td><img src="docs/media/customer.gif" width="100%" alt="New customer signs up and buys 2 sugar at full price; the cart has no discount field"></td>
   </tr>
   <tr>
     <td valign="top">Adds a product, sells 3 × ৳80 with ৳10 off (<b>৳230</b>), stock drops 20 → 17, checks low stock and today's revenue.</td>
-    <td valign="top">Tries to remove 25 units. The <b>server</b> refuses: cashiers may change at most 20 at once.</td>
+    <td valign="top">Sells 2 × ৳120 with ৳20 off (<b>৳220</b>), removes 2 damaged units ✅, then tries 25. The <b>server</b> refuses ❌: cashiers may change at most 20 at once.</td>
     <td valign="top">Signs up and buys at full price. No discount field, and the server would ignore one anyway.</td>
   </tr>
 </table>

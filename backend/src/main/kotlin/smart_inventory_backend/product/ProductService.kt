@@ -1,6 +1,7 @@
 package smart_inventory_backend.product
 
 import org.springframework.dao.DataIntegrityViolationException
+import org.springframework.data.domain.PageRequest
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -57,8 +58,13 @@ class ProductService(private val products: ProductRepository) {
         product.deactivate()
     }
 
+    /**
+     * Finds the product to restock and locks its row. Restock adds to the stock it read, so without
+     * the lock a sale committed in between would be overwritten (a lost update).
+     */
     private fun findDuplicate(name: String, barcode: String?): Product? =
-        if (barcode != null) products.findByBarcode(barcode) else products.findFirstByNameIgnoreCase(name)
+        if (barcode != null) products.lockByBarcode(barcode)
+        else products.lockByName(name, PageRequest.of(0, 1)).firstOrNull()
 
     private fun normalizeBarcode(barcode: String?): String? = barcode?.trim()?.ifBlank { null }
 }

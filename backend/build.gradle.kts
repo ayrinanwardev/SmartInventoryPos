@@ -43,4 +43,8 @@ dependencies {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    // List every test in the build log, so CI shows the PostgreSQL tests ran rather than being skipped.
+    testLogging {
+        events("passed", "skipped", "failed")
+    }
 }

@@ -1,0 +1,5 @@
+# Shell scripts must keep Unix line endings to run on Linux CI and in Git Bash.
+gradlew          text eol=lf
+.githooks/*      text eol=lf
+*.sh             text eol=lf
+gradlew.bat      text eol=crlf

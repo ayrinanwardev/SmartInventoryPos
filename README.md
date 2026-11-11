@@ -8,7 +8,9 @@ Sales keep working when the internet doesn't, and sync without ever being counte
 ![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-Material%203-4285F4?logo=jetpackcompose&logoColor=white)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-6DB33F?logo=springboot&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Supabase-4169E1?logo=postgresql&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-68%20passing-success)
+[![CI](https://github.com/ayrinanwardev/SmartInventoryPos/actions/workflows/ci.yml/badge.svg)](https://github.com/ayrinanwardev/SmartInventoryPos/actions/workflows/ci.yml)
+![Tests](https://img.shields.io/badge/tests-89-success)
+[![Board](https://img.shields.io/badge/planning-project%20board-1d76db?logo=github)](https://github.com/users/ayrinanwardev/projects/1)
 
 ## Demo: one app, three roles
 
@@ -47,7 +49,8 @@ Sales keep working when the internet doesn't, and sync without ever being counte
 - [Tech stack](#tech-stack)
 - [Project structure](#project-structure)
 - [Run it locally](#run-it-locally)
-- [Testing](#testing)
+- [Testing](#testing) (including [multi-threaded tests](#multi-threaded-tests))
+- [How work is planned](#how-work-is-planned)
 - [API](#api)
 - [Security](#security)
 - [Known limitations and roadmap](#known-limitations-and-roadmap)
@@ -227,8 +230,8 @@ The trade-offs worth talking about, and why I made them.
 **1. Idempotent checkout instead of "hope the network works."**
 The phone generates a UUID (`clientId`) per sale, and the database has a unique constraint on it. If an upload times out after the server already saved the sale, the retry returns the saved sale instead of creating a second one. This is what makes automatic background retries safe.
 
-**2. Pessimistic row locks for stock.**
-Two cashiers selling the last item at the same moment must not both succeed. `SaleService` locks each product row (`SELECT … FOR UPDATE`) inside the sale transaction, and a `CHECK (stock >= 0)` constraint is the last line of defence. Overselling returns `409 Conflict`. Optimistic locking would have meant retry loops on the hottest rows; with a handful of tills, a short lock is simpler and correct.
+**2. Pessimistic row locks for stock, taken in a fixed order.**
+Two cashiers selling the last item at the same moment must not both succeed. `SaleService` locks each product row (`SELECT … FOR UPDATE`) inside the sale transaction, and a `CHECK (stock >= 0)` constraint is the last line of defence. Overselling returns `409 Conflict`. Locks are taken in ascending product id, so two sales listing the same products in opposite order can't deadlock ([#3](https://github.com/ayrinanwardev/SmartInventoryPos/issues/3)), and restocking locks the row too, so it can't overwrite a sale ([#5](https://github.com/ayrinanwardev/SmartInventoryPos/issues/5)). Optimistic locking would have meant retry loops on the hottest rows; with a handful of tills, a short lock is simpler and correct. All of this is proven by [multi-threaded tests on real PostgreSQL](#testing).
 
 **3. The server is the source of truth; the phone is a cache.**
 The app reduces stock locally so the screen is right while offline, then refreshes from the server after every sync. A sale the server rejects (for example, out of stock) is marked `REJECTED`, shown to the user, and its local stock change is undone by the next refresh. No merge logic, no conflicts to resolve by hand.
@@ -249,7 +252,8 @@ The Supabase pooler and home routers silently drop idle connections after about 
 | **Android** | Kotlin 2.2 · Jetpack Compose (Material 3) · MVVM with `StateFlow` · Hilt · Room · Retrofit + OkHttp · WorkManager · Android Keystore (AES-GCM) for the session token · min SDK 24 |
 | **Backend** | Kotlin · Spring Boot 3.5 · Spring Security (stateless JWT, jjwt) · Spring Data JPA / Hibernate · Flyway · Bean Validation · BCrypt |
 | **Database** | PostgreSQL 17 on Supabase (session pooler, TLS) · H2 for tests |
-| **Testing** | JUnit · Spring Boot Test + MockMvc · kotlinx-coroutines-test |
+| **Testing** | JUnit 5 · Spring Boot Test · Testcontainers (PostgreSQL) · kotlinx-coroutines-test |
+| **Delivery** | GitHub Issues + Projects · Conventional Commits with issue ids · GitHub Actions CI |
 
 ## Project structure
 
@@ -298,11 +302,46 @@ Open the project in Android Studio and run the `app` configuration.
 ## Testing
 
 ```bash
-./gradlew :backend:test          # 44 tests: API integration (MockMvc + H2) and domain rules
-./gradlew :app:testDebugUnitTest # 24 tests: cart, money and use-case logic
+./gradlew :backend:test          # 60 tests: API, domain rules, time zone, JWT, PostgreSQL concurrency
+./gradlew :app:testDebugUnitTest # 29 tests: cart, money, use cases, app concurrency
 ```
 
-The backend integration tests drive the real HTTP API end to end: login and wrong passwords, role checks, overselling (409), idempotent retries, the cashier's ±20 limit (403), and that customers get no discount.
+All of them run in [CI](https://github.com/ayrinanwardev/SmartInventoryPos/actions/workflows/ci.yml) on every pull request.
+
+**API tests** drive the real HTTP API end to end: login and wrong passwords, role checks, overselling (409), idempotent retries, the cashier's ±20 limit (403), and that customers get no discount.
+
+### Multi-threaded tests
+
+Tills sell at the same time and the phone retries uploads in the background, so the rules must hold under real concurrency. H2 doesn't lock rows or detect deadlocks like PostgreSQL, so the backend's concurrency tests run on **real PostgreSQL** (Testcontainers in CI). Each test starts N threads behind a latch so they fire at the same instant, then checks every outcome.
+
+| Scenario | Threads | Must hold |
+|---|---|---|
+| Many cashiers sell the last item | 16 | exactly 1 sale; the rest get `INSUFFICIENT_STOCK` |
+| 40 sales of a 20-unit product | 40 | exactly 20 sales, stock 0, never negative |
+| Sales listing the same products in opposite order | 8 × 25 rounds | no deadlocks (was 166 of 200 failing, [#3](https://github.com/ayrinanwardev/SmartInventoryPos/issues/3)) |
+| The same sale arriving 10 times at once | 10 | one sale, every copy gets it back (was a 500, [#4](https://github.com/ayrinanwardev/SmartInventoryPos/issues/4)) |
+| Restocking while selling | 30 | no lost updates (was 89 instead of 130, [#5](https://github.com/ayrinanwardev/SmartInventoryPos/issues/5)) |
+| Simultaneous stock adjustments | 30 | all applied; replaying the audit log reproduces every level |
+
+On the app side ([#8](https://github.com/ayrinanwardev/SmartInventoryPos/issues/8)): a burst of checkout taps saves one sale; 8 threads adding to the cart never lose an item; 200 checkouts on real threads while sync runs overlap all end `SYNCED`, each stored once on the server.
+
+To run the PostgreSQL tests locally without Docker, point them at an **empty, throwaway** database (they truncate every table):
+
+```bash
+TEST_DB_URL=jdbc:postgresql://localhost:5432/pos_concurrency_test TEST_DB_USERNAME=postgres TEST_DB_PASSWORD=... ./gradlew :backend:test
+```
+
+With neither Docker nor `TEST_DB_URL`, they're skipped.
+
+## How work is planned
+
+Every change starts as a [GitHub issue](https://github.com/ayrinanwardev/SmartInventoryPos/issues), is tracked on the [project board](https://github.com/users/ayrinanwardev/projects/1), and lands through a pull request that closes it. Bugs get a failing test first. Commits follow a protocol that names the issue:
+
+```
+fix(sale): lock products in id order so checkouts can't deadlock (#3)
+```
+
+It's checked by a local `commit-msg` hook and again in CI. Details in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## API
 
@@ -331,16 +370,16 @@ Errors return a stable JSON shape with a machine-readable code (for example `STO
 - Passwords are hashed with **BCrypt**; the API is **stateless** (JWT, no server sessions).
 - Authorisation is checked **on the server** with `@PreAuthorize` and the policy classes, never trusted from the app.
 - The session token is stored **encrypted** with a key held in the **Android Keystore**.
-- Secrets (database password, JWT secret) come from **environment variables** or a git-ignored `.env`. Nothing secret is committed.
+- Secrets (database password, JWT secret) come from **environment variables** or a git-ignored `.env`. Nothing secret is committed. Outside the `dev` profile the server **refuses to start without `JWT_SECRET`** ([#7](https://github.com/ayrinanwardev/SmartInventoryPos/issues/7)).
 - On Supabase, **row-level security is on and public roles are revoked** on every table, so the database is reachable only through this API.
 
 ## Known limitations and roadmap
 
-Honest status, in priority order:
+Honest status. Each item is an [open issue](https://github.com/ayrinanwardev/SmartInventoryPos/issues) on the [board](https://github.com/users/ayrinanwardev/projects/1):
 
-- [ ] **Hosting.** The backend currently runs on a PC, so the phone reaches it over USB (`adb reverse`). Next step: a Dockerfile and deployment (Render or Railway), so the app works anywhere.
-- [ ] **Discount limits.** Staff may give any discount up to the subtotal. Real shops need a cap (for example, cashiers up to 10%, managers more). The `DiscountPolicy` interface is where this goes.
-- [ ] **CI.** Run both test suites on every push with GitHub Actions.
-- [ ] **Refresh tokens.** Tokens last 24 hours and then the user signs in again.
-- [ ] **Barcode scanning** with the camera (CameraX + ML Kit); today barcodes are typed or searched.
-- [ ] **Reports** beyond today's total: by day, by product, by cashier.
+- [ ] **Hosting** ([#9](https://github.com/ayrinanwardev/SmartInventoryPos/issues/9)). The backend runs on a PC, so the phone reaches it over USB (`adb reverse`). Next: a Dockerfile and deployment next to the database.
+- [ ] **Offline sale price and time** ([#10](https://github.com/ayrinanwardev/SmartInventoryPos/issues/10)). An offline sale is charged at the server's price and time when it syncs; the phone should send both.
+- [ ] **Sync retry on 403** ([#11](https://github.com/ayrinanwardev/SmartInventoryPos/issues/11)). A 403 during sync is retried forever instead of being marked rejected.
+- [ ] **Stock in product edit** ([#12](https://github.com/ayrinanwardev/SmartInventoryPos/issues/12)). Editing a product can put back an old stock value; stock should change only through audited adjustments.
+- [ ] **Refresh tokens** ([#13](https://github.com/ayrinanwardev/SmartInventoryPos/issues/13)). Tokens last 24 hours and carry the role, so a demoted user keeps access until expiry.
+- [ ] **Discount limits** ([#14](https://github.com/ayrinanwardev/SmartInventoryPos/issues/14)). Staff may give any discount up to the subtotal; shops need per-role caps.

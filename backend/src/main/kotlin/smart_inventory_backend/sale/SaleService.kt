@@ -1,7 +1,10 @@
 package smart_inventory_backend.sale
 
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.stereotype.Service
+import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionTemplate
 import smart_inventory_backend.auth.Actor
 import smart_inventory_backend.auth.UnknownUserException
 import smart_inventory_backend.auth.UserRepository
@@ -15,11 +18,28 @@ class SaleService(
     private val sales: SaleRepository,
     private val products: ProductRepository,
     private val users: UserRepository,
-    private val discountPolicy: DiscountPolicy
+    private val discountPolicy: DiscountPolicy,
+    transactionManager: PlatformTransactionManager
 ) {
-    /** Idempotent: resending a clientId returns the saved sale, so offline retries can't sell twice. */
-    @Transactional
-    fun checkout(req: SaleRequest, actor: Actor): SaleResponse {
+    private val writeTx = TransactionTemplate(transactionManager)
+    private val readTx = TransactionTemplate(transactionManager).apply { isReadOnly = true }
+
+    /**
+     * Idempotent: resending a clientId returns the saved sale, so offline retries can't sell twice.
+     *
+     * Two copies of one sale can arrive at the same moment (the app retries after a timeout while
+     * the first request is still running). Both miss the lookup, and the unique key on client_id
+     * lets only one insert succeed. The loser's transaction is already rolled back by then, so it
+     * reads the winner's sale in a fresh transaction and returns that instead of an error.
+     */
+    fun checkout(req: SaleRequest, actor: Actor): SaleResponse =
+        try {
+            writeTx.execute { record(req, actor) }!!
+        } catch (e: DataIntegrityViolationException) {
+            readTx.execute { sales.findByClientId(req.clientId)?.toResponse() } ?: throw e
+        }
+
+    private fun record(req: SaleRequest, actor: Actor): SaleResponse {
         sales.findByClientId(req.clientId)?.let { return it.toResponse() }
 
         val buyer = users.findByUsername(actor.username) ?: throw UnknownUserException(actor.username)

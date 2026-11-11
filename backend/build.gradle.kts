@@ -34,10 +34,17 @@ dependencies {
     runtimeOnly("org.postgresql:postgresql")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
-    testRuntimeOnly("com.h2database:h2")   // tests use a temporary database, never PostgreSQL
+    testRuntimeOnly("com.h2database:h2")   // most tests use a temporary in-memory database
+    // Multi-threaded tests need real PostgreSQL row locks: Testcontainers in CI, or TEST_DB_URL locally.
+    testImplementation("org.testcontainers:postgresql")
+    testImplementation("org.testcontainers:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    // List every test in the build log, so CI shows the PostgreSQL tests ran rather than being skipped.
+    testLogging {
+        events("passed", "skipped", "failed")
+    }
 }

@@ -20,7 +20,8 @@ import java.util.UUID
 @Table(name = "sales")
 class Sale(
     clientId: UUID = UUID.randomUUID(),
-    cashier: AppUser? = null
+    cashier: AppUser? = null,
+    createdAt: Instant = Instant.now()
 ) {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -45,7 +46,7 @@ class Sale(
     var total: BigDecimal = BigDecimal.ZERO
         private set
 
-    var createdAt: Instant = Instant.now()
+    var createdAt: Instant = createdAt
         private set
 
     @OneToMany(mappedBy = "sale", cascade = [CascadeType.ALL], orphanRemoval = true)

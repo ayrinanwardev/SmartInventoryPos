@@ -6,6 +6,7 @@ import smart_inventory_backend.auth.Actor
 import smart_inventory_backend.auth.UnknownUserException
 import smart_inventory_backend.auth.UserRepository
 import smart_inventory_backend.common.pageableOf
+import smart_inventory_backend.product.Product
 import smart_inventory_backend.product.ProductNotFoundException
 import smart_inventory_backend.product.ProductRepository
 
@@ -22,14 +23,24 @@ class SaleService(
         sales.findByClientId(req.clientId)?.let { return it.toResponse() }
 
         val buyer = users.findByUsername(actor.username) ?: throw UnknownUserException(actor.username)
+        val locked = lockInIdOrder(req.items.map { it.productId })
         val sale = Sale(req.clientId, buyer)
         for (item in req.items) {
-            val product = products.lockById(item.productId) ?: throw ProductNotFoundException(item.productId)
-            sale.addItem(product, item.qty)
+            sale.addItem(locked.getValue(item.productId), item.qty)
         }
         sale.applyDiscount(discountPolicy.resolve(req.discount, sale.subtotal, actor.role))
         return sales.saveAndFlush(sale).toResponse()
     }
+
+    /**
+     * Locks every product of a sale in ascending id order. If each sale locked in the order its
+     * items arrived, two sales listing the same products in opposite order could each hold one
+     * lock and wait for the other: a deadlock. One global order makes that cycle impossible.
+     */
+    private fun lockInIdOrder(productIds: List<Long>): Map<Long, Product> =
+        productIds.distinct().sorted().associateWith { id ->
+            products.lockById(id) ?: throw ProductNotFoundException(id)
+        }
 
     @Transactional(readOnly = true)
     fun history(page: Int?, size: Int?): List<SaleResponse> =

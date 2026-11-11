@@ -12,6 +12,8 @@ import smart_inventory_backend.common.pageableOf
 import smart_inventory_backend.product.Product
 import smart_inventory_backend.product.ProductNotFoundException
 import smart_inventory_backend.product.ProductRepository
+import java.time.Clock
+import java.time.Instant
 
 @Service
 class SaleService(
@@ -19,6 +21,7 @@ class SaleService(
     private val products: ProductRepository,
     private val users: UserRepository,
     private val discountPolicy: DiscountPolicy,
+    private val clock: Clock,
     transactionManager: PlatformTransactionManager
 ) {
     private val writeTx = TransactionTemplate(transactionManager)
@@ -44,7 +47,7 @@ class SaleService(
 
         val buyer = users.findByUsername(actor.username) ?: throw UnknownUserException(actor.username)
         val locked = lockInIdOrder(req.items.map { it.productId })
-        val sale = Sale(req.clientId, buyer)
+        val sale = Sale(req.clientId, buyer, Instant.now(clock))
         for (item in req.items) {
             sale.addItem(locked.getValue(item.productId), item.qty)
         }

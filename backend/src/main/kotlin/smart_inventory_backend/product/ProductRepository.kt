@@ -1,6 +1,7 @@
 package smart_inventory_backend.product
 
 import jakarta.persistence.LockModeType
+import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Lock
 import org.springframework.data.jpa.repository.Query
@@ -17,6 +18,13 @@ interface ProductRepository : JpaRepository<Product, Long> {
     @Query("select p from Product p where p.id = :id")
     fun lockById(@Param("id") id: Long): Product?
 
-    fun findByBarcode(barcode: String): Product?
-    fun findFirstByNameIgnoreCase(name: String): Product?
+    /** Finds a product by barcode and locks its row, for read-modify-write such as restocking. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from Product p where p.barcode = :barcode")
+    fun lockByBarcode(@Param("barcode") barcode: String): Product?
+
+    /** Finds products by name, ignoring case, and locks their rows. Lowest id first. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from Product p where lower(p.name) = lower(:name) order by p.id")
+    fun lockByName(@Param("name") name: String, pageable: Pageable): List<Product>
 }

@@ -1,0 +1,20 @@
+#!/bin/sh
+# Rejects commit messages that don't follow CONTRIBUTING.md:
+#   <type>(<scope>): <summary> (#<issue>)
+# Enable with: git config core.hooksPath .githooks
+
+subject=$(head -n 1 "$1")
+
+case "$subject" in
+  Merge*|Revert*|fixup!*|squash!*) exit 0 ;;
+esac
+
+pattern='^(feat|fix|test|refactor|perf|docs|build|ci|chore)(\([a-z0-9-]+\))?: .+ \(#[0-9]+\)$'
+
+if ! printf '%s' "$subject" | grep -Eq "$pattern"; then
+  echo "Commit message doesn't follow the protocol in CONTRIBUTING.md:" >&2
+  echo "  $subject" >&2
+  echo "Expected: <type>(<scope>): <summary> (#<issue>)" >&2
+  echo "Example:  fix(sale): lock products in id order so checkouts can't deadlock (#12)" >&2
+  exit 1
+fi

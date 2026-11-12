@@ -69,9 +69,13 @@ class ProductService(
         }
     }
 
+    /**
+     * Soft delete. The row is locked first: Hibernate writes the whole row back, so deactivating
+     * a copy read before a concurrent sale committed would put that sale's stock back.
+     */
     @Transactional
     fun delete(id: Long) {
-        val product = products.findByIdOrNull(id) ?: throw ProductNotFoundException(id)
+        val product = products.lockById(id) ?: throw ProductNotFoundException(id)
         product.deactivate()
     }
 

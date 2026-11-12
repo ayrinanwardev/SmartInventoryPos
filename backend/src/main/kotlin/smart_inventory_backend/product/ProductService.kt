@@ -64,7 +64,8 @@ class ProductService(
         try {
             return products.saveAndFlush(product).toResponse()
         } catch (e: DataIntegrityViolationException) {
-            throw BarcodeInUseException()
+            val constraint = e.mostSpecificCause.message.orEmpty()
+            throw if (ACTIVE_NAME_INDEX in constraint) NameInUseException() else BarcodeInUseException()
         }
     }
 
@@ -83,4 +84,9 @@ class ProductService(
         else products.lockByName(name, PageRequest.of(0, 1)).firstOrNull()
 
     private fun normalizeBarcode(barcode: String?): String? = barcode?.trim()?.ifBlank { null }
+
+    private companion object {
+        /** The unique index on active product names (db/vendor/postgresql/V2). */
+        const val ACTIVE_NAME_INDEX = "ux_products_active_name"
+    }
 }

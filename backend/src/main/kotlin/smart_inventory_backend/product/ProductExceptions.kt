@@ -15,3 +15,4 @@ class StockBelowZeroException(currentStock: Int) :
     ConflictException("STOCK_BELOW_ZERO", "Stock cannot go below 0 (currently $currentStock)")
 
 class BarcodeInUseException : ConflictException("BARCODE_IN_USE", "Barcode already used")
+class NameInUseException : ConflictException("NAME_IN_USE", "Another active product already has this name")

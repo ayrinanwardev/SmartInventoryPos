@@ -4,10 +4,16 @@ import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
+import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionTemplate
 
 @Service
-class ProductService(private val products: ProductRepository) {
+class ProductService(
+    private val products: ProductRepository,
+    transactionManager: PlatformTransactionManager
+) {
+    private val writeTx = TransactionTemplate(transactionManager)
 
     @Transactional(readOnly = true)
     fun list(query: String?): List<ProductResponse> {
@@ -26,9 +32,19 @@ class ProductService(private val products: ProductRepository) {
     /**
      * Restocks the product if it already exists (matched by barcode, or by name when there is no
      * barcode), otherwise creates it. The app's Add Product screen relies on this behaviour.
+     *
+     * When the product is new there's no row to lock, so two requests for it can both decide to
+     * create it. The unique key lets only one insert through; the other's transaction is rolled
+     * back, and it tries once more in a new one, where it finds the product and restocks it.
      */
-    @Transactional
-    fun createOrRestock(req: ProductRequest): ProductResponse {
+    fun createOrRestock(req: ProductRequest): ProductResponse =
+        try {
+            writeTx.execute { createOrRestockOnce(req) }!!
+        } catch (e: DataIntegrityViolationException) {
+            writeTx.execute { createOrRestockOnce(req) }!!
+        }
+
+    private fun createOrRestockOnce(req: ProductRequest): ProductResponse {
         val barcode = normalizeBarcode(req.barcode)
         val name = req.name.trim()
         val existing = findDuplicate(name, barcode)

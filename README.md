@@ -9,7 +9,7 @@ Sales keep working when the internet doesn't, and sync without ever being counte
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-6DB33F?logo=springboot&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Supabase-4169E1?logo=postgresql&logoColor=white)
 [![CI](https://github.com/ayrinanwardev/SmartInventoryPos/actions/workflows/ci.yml/badge.svg)](https://github.com/ayrinanwardev/SmartInventoryPos/actions/workflows/ci.yml)
-![Tests](https://img.shields.io/badge/tests-89-success)
+![Tests](https://img.shields.io/badge/tests-94-success)
 [![Board](https://img.shields.io/badge/planning-project%20board-1d76db?logo=github)](https://github.com/users/ayrinanwardev/projects/1)
 
 ## Demo: one app, three roles
@@ -302,7 +302,7 @@ Open the project in Android Studio and run the `app` configuration.
 ## Testing
 
 ```bash
-./gradlew :backend:test          # 60 tests: API, domain rules, time zone, JWT, PostgreSQL concurrency
+./gradlew :backend:test          # 65 tests: API, domain rules, time zone, JWT, PostgreSQL concurrency
 ./gradlew :app:testDebugUnitTest # 29 tests: cart, money, use cases, app concurrency
 ```
 
@@ -322,6 +322,10 @@ Tills sell at the same time and the phone retries uploads in the background, so 
 | The same sale arriving 10 times at once | 10 | one sale, every copy gets it back (was a 500, [#4](https://github.com/ayrinanwardev/SmartInventoryPos/issues/4)) |
 | Restocking while selling | 30 | no lost updates (was 89 instead of 130, [#5](https://github.com/ayrinanwardev/SmartInventoryPos/issues/5)) |
 | Simultaneous stock adjustments | 30 | all applied; replaying the audit log reproduces every level |
+| The same username registered at once | 10 | one account, the rest `409 USERNAME_TAKEN` (was a 500, [#25](https://github.com/ayrinanwardev/SmartInventoryPos/issues/25)) |
+| The same new barcode added at once | 10 | one product with all the stock (5 of 10 failed, [#26](https://github.com/ayrinanwardev/SmartInventoryPos/issues/26)) |
+| The same new name added at once | 10 | one product (was 7 duplicates, [#27](https://github.com/ayrinanwardev/SmartInventoryPos/issues/27)) |
+| Deleting a product while it sells | 21 × 15 rounds | stock = start − successful sales (lost 4 sales, [#28](https://github.com/ayrinanwardev/SmartInventoryPos/issues/28)) |
 
 On the app side ([#8](https://github.com/ayrinanwardev/SmartInventoryPos/issues/8)): a burst of checkout taps saves one sale; 8 threads adding to the cart never lose an item; 200 checkouts on real threads while sync runs overlap all end `SYNCED`, each stored once on the server.
 
